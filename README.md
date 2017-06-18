@@ -1,0 +1,2 @@
+# AreaPrinter
+QGIS plugin
