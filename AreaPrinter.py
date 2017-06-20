@@ -32,6 +32,16 @@ import resources
 from AreaPrinter_dialog import AreaPrinterDialog
 import os.path
 
+scale = 25000.0 #1:25000
+A4PortraitHeight = 297.0
+A4PortraitWidth = 210.0
+topMargin = 10.0
+bottomMargin = 10.0
+sideMargin = 10.0
+
+extentHeight = scale * (A4PortraitHeight - topMargin - bottomMargin) / 1000.0 #mm to m
+extentWidth = scale * (A4PortraitWidth - 2.0*sideMargin)  / 1000.0 #mm to m
+
 
 class AreaPrinter:
     """QGIS Plugin Implementation."""
@@ -204,8 +214,7 @@ class AreaPrinter:
     def setup(self):
 	
 	if(self.initialized == 0):
-		map_1 = self.iface.activeComposers()[0].composition().getComposerMapById(1)	
-	
+		
 		self.dlg.adjustBtnN.clicked.connect(self.moveNBtnClicked)
 		self.dlg.adjustBtnS.clicked.connect(self.moveSBtnClicked)
 		self.dlg.adjustBtnE.clicked.connect(self.moveEBtnClicked)
@@ -219,12 +228,25 @@ class AreaPrinter:
 		self.dlg.exitBtn.clicked.connect(self.exitBtnClicked)
 		self.dlg.removeLastBtn.clicked.connect(self.removeLastPage)
 		self.dlg.saveBtn.clicked.connect(self.generateComposer)
+	
+
+		extent_1 = QgsRectangle(self.iface.mapCanvas().extent())
+		# "center" the first page in canvas	
+		xMin = extent_1.xMinimum() + (extent_1.xMaximum() - extent_1.xMinimum()) /2.0
+		xMax = xMin + extentWidth
+		yMin = extent_1.yMinimum() + (extent_1.yMaximum() - extent_1.yMinimum()) /2.0
+		yMax = yMin + extentHeight
+	
+		extent_1.setXMinimum(xMin)
+		extent_1.setYMinimum(yMin)
+		extent_1.setXMaximum(xMax)
+		extent_1.setYMaximum(yMax)
 		
-		extent_1 = QgsRectangle(map_1.currentMapExtent())
+	
 		self.extents.append(extent_1)
 		self.initialized = 1	
 
-	self.layer =  QgsVectorLayer('Polygon', 'fromAreaPrinter' , "memory")
+	self.layer =  QgsVectorLayer('Polygon', 'AreaPrinter' , "memory")
 	self.pr = self.layer.dataProvider() 		
 		
 		
@@ -247,7 +269,6 @@ class AreaPrinter:
     
     def moveNBtnClicked(self):
 	self.moveMap("North")
-
     def moveSBtnClicked(self):
 	self.moveMap("South")
     def moveEBtnClicked(self):
@@ -257,8 +278,8 @@ class AreaPrinter:
     def moveMap(self, direction):
 	self.emptyLayer()
 	offsetStep = 1000.0
-	offsetX =0;
-	offsetY =0;
+	offsetX =0.0;
+	offsetY =0.0;
 	if direction == "North":
 		offsetY = offsetStep
 	elif direction == "South":
@@ -293,8 +314,8 @@ class AreaPrinter:
 	self.emptyLayer()
 	lastExtent = self.extents[len(self.extents)-1] #dont use on empty list
 
-	offsetX = lastExtent.width() * (1-self.overlap);	
-	offsetY = lastExtent.height() * (1-self.overlap);
+	offsetX = lastExtent.width() * (1.0-self.overlap);	
+	offsetY = lastExtent.height() * (1.0-self.overlap);
 
 	doOffsetX = 0.0
 	doOffsetY = 0.0
@@ -339,11 +360,7 @@ class AreaPrinter:
 
 
     def generateComposer(self):
-	A4PortraitHeight = 297.0
-	A4PortraitWidth = 210.0
-	topMargin = 10.0
-	bottomMargin = 10.0
-	sideMargin = 10.0
+
 	
 	self.iface.createNewComposer("AreaPrinter")
 	composerViewIndex = len(self.iface.activeComposers()) -1
@@ -359,6 +376,7 @@ class AreaPrinter:
 		newMap = QgsComposerMap(comp, sideMargin, i* (A4PortraitHeight + spaceBetweenPages) + topMargin, A4PortraitWidth- 2*sideMargin, A4PortraitHeight - topMargin - bottomMargin )
     		
 		newMap.setNewExtent(self.extents[i])
+	
 		comp.addComposerMap(newMap)
 		
 		
