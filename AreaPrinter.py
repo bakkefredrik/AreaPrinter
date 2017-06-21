@@ -21,7 +21,7 @@
  ***************************************************************************/
 """
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon
+from PyQt4.QtGui import QAction, QIcon, QMessageBox
 
 from qgis.core import *
 from qgis.gui import *
@@ -215,6 +215,7 @@ class AreaPrinter:
 	
 	if(self.initialized == 0):
 		
+		
 		self.dlg.adjustBtnN.clicked.connect(self.moveNBtnClicked)
 		self.dlg.adjustBtnS.clicked.connect(self.moveSBtnClicked)
 		self.dlg.adjustBtnE.clicked.connect(self.moveEBtnClicked)
@@ -244,6 +245,11 @@ class AreaPrinter:
 		
 	
 		self.extents.append(extent_1)
+		
+		if len(self.iface.activeComposers()) > 0:
+			self.userWarning("A composer already exist. please remove it before continuing",'Using this plugin can have unintended consequences for existing print composers, as it is not able to distinguish between them')
+		
+
 		self.initialized = 1	
 
 	self.layer =  QgsVectorLayer('Polygon', 'AreaPrinter' , "memory")
@@ -254,7 +260,13 @@ class AreaPrinter:
 		self.printExtents(ex)
 	
 	QgsMapLayerRegistry.instance().addMapLayers([self.layer])
-
+	
+	#opacity
+	layerRenderer = self.layer.rendererV2()
+	sym = QgsFillSymbolV2.createSimple({'color':'0,32,32,32', 
+                                      'color_border':'#000000',
+                                      'width_border':'0.2'})
+	layerRenderer.setSymbol(sym)
 	
 
     def printExtents(self, rect):
@@ -376,18 +388,62 @@ class AreaPrinter:
 		newMap = QgsComposerMap(comp, sideMargin, i* (A4PortraitHeight + spaceBetweenPages) + topMargin, A4PortraitWidth- 2*sideMargin, A4PortraitHeight - topMargin - bottomMargin )
     		
 		newMap.setNewExtent(self.extents[i])
-	
+		self.createUtmGrid(newMap)
+		
 		comp.addComposerMap(newMap)
-		
-		
+	self.createScaleBars()	
+	self.createScales()		
 
 	 
 	
 	
+    def userWarning(self, text, details):
+	msg = QMessageBox()
+	msg.setIcon(QMessageBox.Warning)
+	msg.setText(text)
+	msg.setWindowTitle("Warning")
+	msg.setDetailedText(details)
+	msg.exec_() 
+
+			#mapItem = iface.activeComposers()[0].composition().composerMapItems()
+    def createUtmGrid(self, mapItem):
+	grid = QgsComposerMapGrid('kilometerGrid', mapItem)
+	grid.setIntervalX(1000.0)	#km
+	grid.setIntervalY(1000.0)	#km
+	grid.setGridLineWidth(0.1)
+	grid.setAnnotationEnabled(True) 
+	grid.setAnnotationDirection(2,1) # right side vertical
+	grid.setAnnotationDirection(0,3) # top side horizontal
+	grid.setAnnotationDisplay(3,0) # none at left
+	grid.setAnnotationDisplay(3,2) # none at bottom
+	grid.setAnnotationPrecision(0) # no decimals
+	mapItem.grids().addGrid(grid)
+
+	
+    def createScaleBars(self): #mapnumber from zero
+	comp = self.iface.activeComposers()[0].composition()
+	for i in range(0, len(comp.composerMapItems())):
 
 
-
-
-
-
-
+		scaleBar = QgsComposerScaleBar(comp)
+		scaleBar.setComposerMap(comp.composerMapItems()[i])			
+			
+		scaleBar.setNumMapUnitsPerScaleBarUnit(1000.0)				
+#		scaleBar.setUnits(2) #km
+		scaleBar.setUnitLabeling("km")
+		scaleBar.setNumSegmentsLeft(0)
+		scaleBar.setNumSegments(4)
+		scaleBar.setNumUnitsPerSegment(250.0)
+		
+		comp.addComposerScaleBar(scaleBar)		
+		scaleBar.setItemPosition(sideMargin,A4PortraitHeight,6,i+1)  #x,y,lowerleft,page
+					
+    def createScales(self): #mapnumber from zero
+	comp = self.iface.activeComposers()[0].composition()
+	for i in range(0, len(comp.composerMapItems())):
+		scale = QgsComposerScaleBar(comp)
+		scale.setComposerMap(comp.composerMapItems()[i])			
+			
+		scale.setStyle("Numeric")
+		comp.addComposerScaleBar(scale)		
+		scale.setItemPosition(80,A4PortraitHeight,6,i+1)  #x,y,lowerleft,page

@@ -130,19 +130,6 @@
     <string>Save A4 Print Composer</string>
    </property>
   </widget>
-  <widget class="QLabel" name="adjustLabel">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>100</y>
-     <width>94</width>
-     <height>24</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Adjust</string>
-   </property>
-  </widget>
   <widget class="QLabel" name="addLAbel">
    <property name="geometry">
     <rect>
@@ -180,22 +167,6 @@
    </property>
    <property name="text">
     <string>Remove Last</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>0</y>
-     <width>161</width>
-     <height>51</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Delete all print composers first!</string>
-   </property>
-   <property name="wordWrap">
-    <bool>true</bool>
    </property>
   </widget>
  </widget>
