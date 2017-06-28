@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>490</width>
-    <height>300</height>
+    <height>337</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -121,7 +121,7 @@
    <property name="geometry">
     <rect>
      <x>210</x>
-     <y>260</y>
+     <y>290</y>
      <width>271</width>
      <height>34</height>
     </rect>
@@ -146,8 +146,8 @@
   <widget class="QPushButton" name="exitBtn">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>260</y>
+     <x>360</x>
+     <y>250</y>
      <width>123</width>
      <height>34</height>
     </rect>
@@ -180,6 +180,74 @@
    </property>
    <property name="text">
     <string>Move</string>
+   </property>
+  </widget>
+  <widget class="QRadioButton" name="rb10">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>230</y>
+     <width>153</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>1:10k</string>
+   </property>
+  </widget>
+  <widget class="QRadioButton" name="rb25">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>260</y>
+     <width>153</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>1:25k</string>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QRadioButton" name="rb50">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>290</y>
+     <width>153</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>1:50k</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="resetBtn">
+   <property name="geometry">
+    <rect>
+     <x>100</x>
+     <y>230</y>
+     <width>51</width>
+     <height>91</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>reset</string>
+   </property>
+  </widget>
+  <widget class="Line" name="line">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>220</y>
+     <width>481</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
    </property>
   </widget>
  </widget>

@@ -32,15 +32,15 @@ import resources
 from AreaPrinter_dialog import AreaPrinterDialog
 import os.path
 
-scale = 25000.0 #1:25000
-A4PortraitHeight = 297.0
-A4PortraitWidth = 210.0
-topMargin = 10.0
-bottomMargin = 10.0
-sideMargin = 10.0
+scale = 0.0
+A4PortraitHeight = 0.0
+A4PortraitWidth = 0.0
+topMargin = 0.0
+bottomMargin = 0.0
+sideMargin = 0.0
 
-extentHeight = scale * (A4PortraitHeight - topMargin - bottomMargin) / 1000.0 #mm to m
-extentWidth = scale * (A4PortraitWidth - 2.0*sideMargin)  / 1000.0 #mm to m
+extentHeight = 0.0
+extentWidth = 0.0
 
 
 class AreaPrinter:
@@ -215,7 +215,6 @@ class AreaPrinter:
 	
 	if(self.initialized == 0):
 		
-		
 		self.dlg.adjustBtnN.clicked.connect(self.moveNBtnClicked)
 		self.dlg.adjustBtnS.clicked.connect(self.moveSBtnClicked)
 		self.dlg.adjustBtnE.clicked.connect(self.moveEBtnClicked)
@@ -229,28 +228,19 @@ class AreaPrinter:
 		self.dlg.exitBtn.clicked.connect(self.exitBtnClicked)
 		self.dlg.removeLastBtn.clicked.connect(self.removeLastPage)
 		self.dlg.saveBtn.clicked.connect(self.generateComposer)
-	
+		self.dlg.resetBtn.clicked.connect(self.reset)
 
-		extent_1 = QgsRectangle(self.iface.mapCanvas().extent())
-		# "center" the first page in canvas	
-		xMin = extent_1.xMinimum() + (extent_1.xMaximum() - extent_1.xMinimum()) /2.0
-		xMax = xMin + extentWidth
-		yMin = extent_1.yMinimum() + (extent_1.yMaximum() - extent_1.yMinimum()) /2.0
-		yMax = yMin + extentHeight
+		self.initialized = 1	
 	
-		extent_1.setXMinimum(xMin)
-		extent_1.setYMinimum(yMin)
-		extent_1.setXMaximum(xMax)
-		extent_1.setYMaximum(yMax)
-		
+		self.calculateValues()
+		self.createInitialPage()
 	
-		self.extents.append(extent_1)
 		
 		if len(self.iface.activeComposers()) > 0:
 			self.userWarning("A composer already exist. please remove it before continuing",'Using this plugin can have unintended consequences for existing print composers, as it is not able to distinguish between them')
 		
 
-		self.initialized = 1	
+	
 
 	self.layer =  QgsVectorLayer('Polygon', 'AreaPrinter' , "memory")
 	self.pr = self.layer.dataProvider() 		
@@ -300,9 +290,7 @@ class AreaPrinter:
 		offsetX = offsetStep
 	elif direction == "West":
 		offsetX = 0.0-offsetStep
-		
 
-	
 	for ex in self.extents:
 		ex.setYMaximum(ex.yMaximum() + offsetY)
 		ex.setYMinimum(ex.yMinimum() + offsetY)
@@ -447,3 +435,71 @@ class AreaPrinter:
 		scale.setStyle("Numeric")
 		comp.addComposerScaleBar(scale)		
 		scale.setItemPosition(80,A4PortraitHeight,6,i+1)  #x,y,lowerleft,page
+
+
+    def reset(self):
+	del self.extents[:] #delete extents
+	self.emptyLayer()
+	self.calculateValues()
+	self.createInitialPage()
+	self.printExtents(self.extents[0])
+
+    def createInitialPage(self):
+	extent_1 = QgsRectangle(self.iface.mapCanvas().extent())
+	# "center" the first page in canvas	
+	xMin = extent_1.xMinimum() + (extent_1.xMaximum() - extent_1.xMinimum()) /2.0
+	xMax = xMin + extentWidth
+	yMin = extent_1.yMinimum() + (extent_1.yMaximum() - extent_1.yMinimum()) /2.0
+	yMax = yMin + extentHeight
+	extent_1.setXMinimum(xMin)
+	extent_1.setYMinimum(yMin)
+	extent_1.setXMaximum(xMax)
+	extent_1.setYMaximum(yMax)
+	
+	self.extents.append(extent_1)
+	
+
+
+    def calculateValues(self):
+
+	
+	global scale
+	global A4PortraitHeight
+	global A4PortraitWidth
+	global topMargin
+	global bottomMargin
+	global sideMargin
+	global extentHeight
+	global extentWidth
+
+
+	if self.dlg.rb10.isChecked():
+		scale = 10000
+	elif self.dlg.rb25.isChecked():
+		scale = 25000
+	elif self.dlg.rb50.isChecked():
+		scale = 50000
+	else:
+		scale = 25000	#default 1:25000
+
+	A4PortraitHeight = 297.0
+	A4PortraitWidth = 210.0
+	topMargin = 10.0
+	bottomMargin = 10.0
+	sideMargin = 10.0
+	
+	extentHeight = scale * (A4PortraitHeight - topMargin - bottomMargin) / 1000.0 #mm to m
+	extentWidth = scale * (A4PortraitWidth - 2.0*sideMargin)  / 1000.0 #mm to m
+
+
+
+
+
+
+
+
+
+
+
+
+
