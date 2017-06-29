@@ -270,14 +270,30 @@ class AreaPrinter:
 
     
     def moveNBtnClicked(self):
-	self.moveMap("North")
+	if self.dlg.moveAllCb.isChecked():
+		self.moveMap("North", True)
+	else:
+		self.moveMap("North", False)
+
     def moveSBtnClicked(self):
-	self.moveMap("South")
+	if self.dlg.moveAllCb.isChecked():
+		self.moveMap("South", True)
+	else:
+		self.moveMap("South", False)
+
     def moveEBtnClicked(self):
-	self.moveMap("East")
+	if self.dlg.moveAllCb.isChecked():
+		self.moveMap("East", True)
+	else:
+		self.moveMap("East", False)
+
     def moveWBtnClicked(self):
-	self.moveMap("West")
-    def moveMap(self, direction):
+	if self.dlg.moveAllCb.isChecked():
+		self.moveMap("West", True)
+	else:
+		self.moveMap("West", False)
+
+    def moveMap(self, direction, moveAll):
 	self.emptyLayer()
 	offsetStep = 1000.0
 	offsetX =0.0;
@@ -291,13 +307,21 @@ class AreaPrinter:
 	elif direction == "West":
 		offsetX = 0.0-offsetStep
 
-	for ex in self.extents:
+	if moveAll == True :
+		for ex in self.extents:
+			ex.setYMaximum(ex.yMaximum() + offsetY)
+			ex.setYMinimum(ex.yMinimum() + offsetY)
+			ex.setXMaximum(ex.xMaximum() + offsetX)
+			ex.setXMinimum(ex.xMinimum() + offsetX)
+	else: #move only last extent
+		ex = self.extents[len(self.extents)-1] #dont use on empty list
 		ex.setYMaximum(ex.yMaximum() + offsetY)
 		ex.setYMinimum(ex.yMinimum() + offsetY)
 		ex.setXMaximum(ex.xMaximum() + offsetX)
 		ex.setXMinimum(ex.xMinimum() + offsetX)
+	
+	for ex in self.extents:
 		self.printExtents(ex)
-
 	
 
 
