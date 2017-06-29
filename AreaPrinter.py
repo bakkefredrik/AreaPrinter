@@ -21,7 +21,7 @@
  ***************************************************************************/
 """
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon, QMessageBox
+from PyQt4.QtGui import QAction, QIcon, QMessageBox, QColor
 
 from qgis.core import *
 from qgis.gui import *
@@ -422,6 +422,14 @@ class AreaPrinter:
 	grid = QgsComposerMapGrid('kilometerGrid', mapItem)
 	grid.setIntervalX(1000.0)	#km
 	grid.setIntervalY(1000.0)	#km
+	
+	if scale == 10000:
+		grid.setIntervalX(250.0)	#km
+		grid.setIntervalY(250.0)
+	else:
+		grid.setIntervalX(1000.0)	#km
+		grid.setIntervalY(1000.0)
+
 	grid.setGridLineWidth(0.1)
 	grid.setAnnotationEnabled(True) 
 	grid.setAnnotationDirection(2,1) # right side vertical
@@ -429,6 +437,8 @@ class AreaPrinter:
 	grid.setAnnotationDisplay(3,0) # none at left
 	grid.setAnnotationDisplay(3,2) # none at bottom
 	grid.setAnnotationPrecision(0) # no decimals
+	grid.setGridLineColor(QColor("#407AA0"))
+
 	mapItem.grids().addGrid(grid)
 
 	
@@ -444,9 +454,14 @@ class AreaPrinter:
 #		scaleBar.setUnits(2) #km
 		scaleBar.setUnitLabeling("km")
 		scaleBar.setNumSegmentsLeft(0)
-		scaleBar.setNumSegments(4)
-		scaleBar.setNumUnitsPerSegment(250.0)
 		
+		if scale == 50000:		# special case, scalebar cannot fit four labels
+			scaleBar.setNumSegments(2)
+			scaleBar.setNumUnitsPerSegment(500.0)
+		else:
+			scaleBar.setNumSegments(4)
+			scaleBar.setNumUnitsPerSegment(250.0)
+
 		comp.addComposerScaleBar(scaleBar)		
 		scaleBar.setItemPosition(sideMargin,A4PortraitHeight,6,i+1)  #x,y,lowerleft,page
 					
@@ -458,7 +473,7 @@ class AreaPrinter:
 			
 		scale.setStyle("Numeric")
 		comp.addComposerScaleBar(scale)		
-		scale.setItemPosition(80,A4PortraitHeight,6,i+1)  #x,y,lowerleft,page
+		scale.setItemPosition(160,A4PortraitHeight,6,i+1)  #x,y,lowerleft,page
 
 
     def reset(self):
