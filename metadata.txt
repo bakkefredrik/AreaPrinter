@@ -14,7 +14,7 @@ version=0.1
 author=Fredrik Bakke
 email=bakkefredrik@gmail.com
 
-about=AreaPrinter
+about=AreaPrinter simplifies the process of creating print composers for navigation-quality hiking maps. It produces a print composer with km grid, scale and ruler for an area that may contain several pages. Currently only A4 paper, 1:10k,1:25k or 1:50k scales, and CRS's with meter unit (UTM) is supported.
 
 tracker=https://github.com/bakkefredrik/AreaPrinter
 repository=https://github.com/bakkefredrik/AreaPrinter
@@ -36,4 +36,3 @@ experimental=True
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
-
