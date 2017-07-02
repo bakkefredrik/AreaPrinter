@@ -385,7 +385,9 @@ class AreaPrinter:
 
     def generateComposer(self):
 
-	
+	#first remove layer
+	QgsMapLayerRegistry.instance().removeMapLayer(self.layer.id())
+	#then create and set up composer
 	self.iface.createNewComposer("AreaPrinter")
 	composerViewIndex = len(self.iface.activeComposers()) -1
 	comp = self.iface.activeComposers()[0].composition()      # new compositions dont have consistent index
