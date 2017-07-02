@@ -395,8 +395,9 @@ class AreaPrinter:
 
 	spaceBetweenPages = comp.spaceBetweenPages()
 	comp.setPaperSize(A4PortraitWidth,A4PortraitHeight) 
-
-
+	
+	CRS = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()  #the canvas' current CRS 
+	mapName = self.dlg.mapNameEdit.text()
 	
 	for i in range(0, len(self.extents)):
 		newMap = QgsComposerMap(comp, sideMargin, i* (A4PortraitHeight + spaceBetweenPages) + topMargin, A4PortraitWidth- 2*sideMargin, A4PortraitHeight - topMargin - bottomMargin )
@@ -407,9 +408,7 @@ class AreaPrinter:
 		comp.addComposerMap(newMap)
 	self.createScaleBars()	
 	self.createScales()		
-
-	 
-	
+	self.createInfoLabels(CRS, mapName)
 	
     def userWarning(self, text, details):
 	msg = QMessageBox()
@@ -419,7 +418,6 @@ class AreaPrinter:
 	msg.setDetailedText(details)
 	msg.exec_() 
 
-			#mapItem = iface.activeComposers()[0].composition().composerMapItems()
     def createUtmGrid(self, mapItem):
 	grid = QgsComposerMapGrid('kilometerGrid', mapItem)
 	grid.setIntervalX(1000.0)	#km
@@ -476,6 +474,28 @@ class AreaPrinter:
 		scale.setStyle("Numeric")
 		comp.addComposerScaleBar(scale)		
 		scale.setItemPosition(160,A4PortraitHeight,6,i+1)  #x,y,lowerleft,page
+
+    def createInfoLabels(self,CRS,mapName):
+	tmpString="QGIS/AreaPrinter"	
+	infoLabelText = mapName + ". " + CRS + ". " + tmpString
+	
+	comp = self.iface.activeComposers()[0].composition()
+	pages = len(comp.composerMapItems())
+	for i in range(0, len(comp.composerMapItems())):
+		#add info label		
+		label = QgsComposerLabel(comp)
+		label.setText(infoLabelText)
+		label.adjustSizeToText()
+		comp.addComposerLabel(label)		
+		label.setItemPosition(sideMargin,0,0,i+1) #x,y,upperleft,page
+
+		#add page number
+		pageIndex = i+1
+		pageLabel = QgsComposerLabel(comp)
+		pageLabel.setText("Page " + str(pageIndex) + "/" + str(pages) )
+		pageLabel.adjustSizeToText()
+		comp.addComposerLabel(pageLabel)		
+		pageLabel.setItemPosition(A4PortraitWidth - sideMargin,0,2,i+1) #x,y,upperright,page
 
 
     def reset(self):
