@@ -365,7 +365,9 @@ class AreaPrinter:
 	
 
     def exitBtnClicked(self):
-	
+	#first remove layer
+	QgsMapLayerRegistry.instance().removeMapLayer(self.layer.id())
+
 	self.dlg.close()
 
 
