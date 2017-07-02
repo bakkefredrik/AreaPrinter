@@ -10,11 +10,11 @@
 name=AreaPrinter
 qgisMinimumVersion=2.0
 description=AreaPrinter
-version=0.2
+version=0.3
 author=Fredrik Bakke
 email=bakkefredrik@gmail.com
 
-about=AreaPrinter simplifies the process of creating print composers for navigation-quality hiking maps. It produces a print composer with km grid, scale and ruler for an area that may contain several pages. Currently only A4 paper, 1:10k,1:25k or 1:50k scales, and CRS's with meter unit (UTM) is supported.
+about=AreaPrinter simplifies the process of creating print composers for navigation-quality hiking maps. It produces a print composer with km grid, scale and ruler for an area that may span several pages. Currently A4 paper, 1:10k,1:25k or 1:50k scales, and CRS's with meter unit (UTM) is supported. Warning: Verify the correctness of map before using it, author takes no responsibility.
 
 tracker=https://github.com/bakkefredrik/AreaPrinter
 repository=https://github.com/bakkefredrik/AreaPrinter
@@ -23,14 +23,15 @@ repository=https://github.com/bakkefredrik/AreaPrinter
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-# changelog=
+# changelog=Added CRS,Map name, page numbers. removes layer before printing composer.
+
 
 # Tags are comma separated with spaces allowed
-tags=
+tags=Hiking, trekking, navigation, printing
 
 homepage=https://github.com/bakkefredrik/AreaPrinter
 category=Plugins
-icon=icon.png
+icon=mountainIcon.png
 # experimental flag
 experimental=True
 
