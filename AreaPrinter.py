@@ -25,11 +25,12 @@ from PyQt4.QtGui import QAction, QIcon, QMessageBox, QColor
 
 from qgis.core import *
 from qgis.gui import *
-
+import math
 # Initialize Qt resources from file resources.py
 import resources
 # Import the code for the dialog
 from AreaPrinter_dialog import AreaPrinterDialog
+from AreaPrinter_toolDialog import AreaPrinterToolDialog
 import os.path
 
 scale = 0.0
@@ -46,6 +47,8 @@ extentWidth = 0.0
 class AreaPrinter:
     """QGIS Plugin Implementation."""
     initialized = 0
+    initializedTools = 0
+    	
     extents = list()
     overlap = 0.1 #value*100 = %overlap
     layer = QgsVectorLayer
@@ -80,9 +83,13 @@ class AreaPrinter:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&AreaPrinter')
+
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'AreaPrinter')
         self.toolbar.setObjectName(u'AreaPrinter')
+
+	self.toolbar2 = self.iface.addToolBar(u'AreaPrinterTools')
+        self.toolbar2.setObjectName(u'AreaPrinterTools')
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -152,6 +159,7 @@ class AreaPrinter:
 
         # Create the dialog (after translation) and keep reference
         self.dlg = AreaPrinterDialog()
+	self.tools = AreaPrinterToolDialog()
 
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
@@ -179,12 +187,19 @@ class AreaPrinter:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/AreaPrinter/icon.png'
+        icon_path = ':/plugins/AreaPrinter/mountainIcon.png'
         self.add_action(
             icon_path,
             text=self.tr(u'AreaPrinter'),
             callback=self.run,
             parent=self.iface.mainWindow())
+
+	self.add_action(
+            icon_path,
+            text=self.tr(u'Grid Convergence'),
+            callback=self.runTools,
+            parent=self.iface.mainWindow())
+
 
 
     def unload(self):
@@ -556,6 +571,37 @@ class AreaPrinter:
 
 
 
+
+    def runTools(self):
+
+	if(self.initializedTools == 0):		
+		self.tools.calcBtn.clicked.connect(self.toolsCalcBtnClicked)
+		self.initializedTools = 1
+	self.tools.show()
+        # Run the dialog event loop
+        result = self.tools.exec_()
+        # See if OK was pressed
+        if result:
+            # Do something useful here - delete the line containing pass and
+            # substitute with your code.
+            pass
+
+    #returns the grid convergence (angle clockwise from a true north meridian
+
+    def toolsCalcBtnClicked(self):
+	pointLong = float(self.tools.longEdit.text())
+	pointLat = float(self.tools.latEdit.text())
+	trueLong = float(self.tools.tLongEdit.text())
+	result = str(self.findGridConvergence(pointLong, pointLat, trueLong))
+	self.tools.resultLabel.setText(result)
+
+    def findGridConvergence(self, pointLongitude, pointLatitude, trueNorthMeridianLongitude):
+
+	A = math.tan(math.radians(pointLongitude-trueNorthMeridianLongitude))
+	B = math.sin(math.radians(pointLatitude))
+	C = A * B
+	D = math.degrees(math.atan(C))
+	return D
 
 
 
