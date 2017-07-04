@@ -275,8 +275,19 @@ class AreaPrinter:
 	
 
     def printExtents(self, rect):
+	
+	#rotatedRect = rotateRectangleAroundCentre(rect,float(self.dlg.rotateEdit.text()))	
+	angle = float(self.dlg.rotateEdit.text())
+	centre = rect.center()
+	p1 = rotatePoint(centre, QgsPoint(rect.xMinimum(), rect.yMinimum()),angle)
+	p2 = rotatePoint(centre, QgsPoint(rect.xMinimum(), rect.yMaximum()),angle)
+	p3 = rotatePoint(centre, QgsPoint(rect.xMaximum(), rect.yMinimum()),angle)
+	p4 = rotatePoint(centre, QgsPoint(rect.xMaximum(), rect.yMaximum()),angle)
+
 	poly = QgsFeature()
-	points = [QgsPoint(rect.xMinimum(), rect.yMinimum()), QgsPoint(rect.xMinimum(), rect.yMaximum()), QgsPoint(rect.xMaximum(), rect.yMaximum()),QgsPoint(rect.xMaximum(), rect.yMinimum())]
+
+	points = [p1,p2,p4,p3]
+	#points = [QgsPoint(rotatedRect.xMinimum(), rotatedRect.yMinimum()), QgsPoint(rotatedRect.xMinimum(), rotatedRect.yMaximum()), QgsPoint(rotatedRect.xMaximum(), rotatedRect.yMaximum()),QgsPoint(rotatedRect.xMaximum(), rotatedRect.yMinimum())]
 	poly.setGeometry(QgsGeometry.fromPolygon([points]))
 	self.pr.addFeatures([poly])
 	self.layer.updateExtents()
@@ -605,6 +616,33 @@ class AreaPrinter:
 
 
 
+
+
+def rotatePoint(origin, point, angle):
+    #rotate point clockwise around origin, angle in degrees
+    
+    cosAngle = math.cos(math.radians(-angle))
+    sinAngle = math.sin(math.radians(-angle))
+
+    returnX = origin.x() + cosAngle * (point.x() - origin.x()) - sinAngle * (point.y() - origin.y())
+    returnY = origin.y() + sinAngle * (point.x() - origin.x()) + cosAngle * (point.y() - origin.y())
+    return QgsPoint(returnX,returnY)
+
+
+def rotateRectangleAroundCentre(rect, angle):
+    #rotate rectangle angle degrees clockwise
+    ret = QgsRectangle(0,0,0,0)
+    centre = rect.center()
+
+    xMin = rect.xMinimum()
+    xMax = rect.xMaximum()
+    yMin = rect.yMinimum()
+    yMax = rect.yMaximum()
+
+    p1 = rotatePoint(centre, QgsPoint(xMin,yMin),angle)
+    p2 = rotatePoint(centre, QgsPoint(xMax,yMax),angle)
+
+    return QgsRectangle(p1,p2)
 
 
 
