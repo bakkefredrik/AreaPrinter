@@ -292,30 +292,43 @@
     <string>Map Name:</string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="rotateEdit">
+  <widget class="QLabel" name="label_3">
    <property name="geometry">
     <rect>
-     <x>90</x>
-     <y>263</y>
-     <width>113</width>
-     <height>34</height>
+     <x>13</x>
+     <y>269</y>
+     <width>181</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Grid Convergence</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="rotateEdit">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>266</y>
+     <width>61</width>
+     <height>30</height>
     </rect>
    </property>
    <property name="text">
     <string>0</string>
    </property>
   </widget>
-  <widget class="QLabel" name="label_3">
+  <widget class="QCheckBox" name="rotCb">
    <property name="geometry">
     <rect>
-     <x>13</x>
-     <y>269</y>
-     <width>71</width>
-     <height>20</height>
+     <x>270</x>
+     <y>270</y>
+     <width>211</width>
+     <height>29</height>
     </rect>
    </property>
    <property name="text">
-    <string>rotate:</string>
+    <string>Rot. to true north</string>
    </property>
   </widget>
  </widget>

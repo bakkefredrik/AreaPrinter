@@ -50,7 +50,7 @@ class AreaPrinter:
     """QGIS Plugin Implementation."""
     initialized = 0
     initializedTools = 0
-    	
+    doRotate = 0 #rotate to true north	
     extents = list()
     overlap = 0.1 #value*100 = %overlap
     layer = QgsVectorLayer
@@ -255,16 +255,13 @@ class AreaPrinter:
 		
 		if len(self.iface.activeComposers()) > 0:
 			self.userWarning("A composer already exist. please remove it before continuing",'Using this plugin can have unintended consequences for existing print composers, as it is not able to distinguish between them')
-		
-	authId = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
-	utmZone = getUtmZoneNumberFromProjection(authId)
-	trueNorthMeridianLongitude = getTrueNorthMeridianLongitudeOfUtmZone(utmZone)
-	canvasCenter = self.iface.mapCanvas().extent().center()
-	centerGeoGraphic = getGeoGraphicCoordinate(authId, canvasCenter.x(), canvasCenter.y())
-	gc = self.findGridConvergence(centerGeoGraphic.x(), centerGeoGraphic.y(), trueNorthMeridianLongitude)
 	
-	self.dlg.rotateEdit.setText(str(gc))
-	self.gridConvergence = gc   #store grid convergence
+	if self.dlg.rotCb.isChecked():
+		self.doRotate = 1
+	else:
+		self.doRotate = 0
+	
+	self.updateGridConvergence()
 		
 	self.layer =  QgsVectorLayer('Polygon', 'AreaPrinter' , "memory")
 	self.pr = self.layer.dataProvider() 		
@@ -287,10 +284,15 @@ class AreaPrinter:
 	
 	
 	centre = rect.center()
-	p1 = rotatePoint(centre, QgsPoint(rect.xMinimum(), rect.yMinimum()),-self.gridConvergence)
-	p2 = rotatePoint(centre, QgsPoint(rect.xMinimum(), rect.yMaximum()),-self.gridConvergence)
-	p3 = rotatePoint(centre, QgsPoint(rect.xMaximum(), rect.yMinimum()),-self.gridConvergence)
-	p4 = rotatePoint(centre, QgsPoint(rect.xMaximum(), rect.yMaximum()),-self.gridConvergence)
+	
+	rotation = 0	
+	if self.doRotate == 1:
+		rotation = -self.gridConvergence
+	
+	p1 = rotatePoint(centre, QgsPoint(rect.xMinimum(), rect.yMinimum()),rotation)
+	p2 = rotatePoint(centre, QgsPoint(rect.xMinimum(), rect.yMaximum()),rotation)
+	p3 = rotatePoint(centre, QgsPoint(rect.xMaximum(), rect.yMinimum()),rotation)
+	p4 = rotatePoint(centre, QgsPoint(rect.xMaximum(), rect.yMaximum()),rotation)
 
 	poly = QgsFeature()
 
@@ -397,7 +399,11 @@ class AreaPrinter:
 	#now move extent in accordance with angle
 	tmpCenter = newExtent.center()
 	origin = lastExtent.center()
-	centreInRotatedSpace = rotatePoint(origin, tmpCenter, -self.gridConvergence)
+	
+	rotation = 0	
+	if self.doRotate == 1:
+		rotation = -self.gridConvergence
+	centreInRotatedSpace = rotatePoint(origin, tmpCenter, rotation)
 	
 	extentInRotatedSpace = QgsRectangle(newExtent)
 	extentInRotatedSpace.setXMinimum(centreInRotatedSpace.x() - newExtent.width() / 2.0)	
@@ -451,10 +457,12 @@ class AreaPrinter:
 		newMap = QgsComposerMap(comp, sideMargin, i* (A4PortraitHeight + spaceBetweenPages) + topMargin, A4PortraitWidth- 2*sideMargin, A4PortraitHeight - topMargin - bottomMargin )
     		
 		newMap.setNewExtent(self.extents[i])
-
-		gc = self.gridConvergence
-		if gc < 0:	#composer dont handle negative
-			gc = 360+gc
+		
+		gc = 0
+		if self.doRotate == 1:
+			gc = self.gridConvergence
+			if gc < 0:	#composer dont handle negative
+				gc = 360+gc
 		
 		newMap.setMapRotation(gc)
 		self.createUtmGrid(newMap)
@@ -531,7 +539,16 @@ class AreaPrinter:
 
     def createInfoLabels(self,CRS,mapName):
 	tmpString="QGIS/AreaPrinter"	
-	infoLabelText = mapName + ". " + CRS + ". " + tmpString
+	
+
+	if self.doRotate == 1:
+		upString = "Up=True North. "
+	elif self.doRotate == 0:
+		upString = "UP=Grid North. "
+	else:
+		upString = " "
+
+	infoLabelText = mapName + ". " + CRS + ". " + upString + "Grid Convergence="+str(self.gridConvergence)+". " + tmpString
 	
 	comp = self.iface.activeComposers()[0].composition()
 	pages = len(comp.composerMapItems())
@@ -554,9 +571,14 @@ class AreaPrinter:
 
     def reset(self):
 	del self.extents[:] #delete extents
+	
+	if self.dlg.rotCb.isChecked():
+		self.doRotate = 1
+	else:
+		self.doRotate = 0
 	self.emptyLayer()	
 	self.calculateValues()
-	self.gridConvergence = float(self.dlg.rotateEdit.text())
+	self.updateGridConvergence()
 	self.createInitialPage()
 	self.printExtents(self.extents[0])
 	
@@ -608,6 +630,17 @@ class AreaPrinter:
 	extentHeight = scale * (A4PortraitHeight - topMargin - bottomMargin) / 1000.0 #mm to m
 	extentWidth = scale * (A4PortraitWidth - 2.0*sideMargin)  / 1000.0 #mm to m
 
+    def updateGridConvergence(self):
+	authId = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
+	utmZone = getUtmZoneNumberFromProjection(authId)
+	trueNorthMeridianLongitude = getTrueNorthMeridianLongitudeOfUtmZone(utmZone)
+	canvasCenter = self.iface.mapCanvas().extent().center()
+	centerGeoGraphic = getGeoGraphicCoordinate(authId, canvasCenter.x(), canvasCenter.y())
+	gc = self.findGridConvergence(centerGeoGraphic.x(), centerGeoGraphic.y(), trueNorthMeridianLongitude)
+	
+	self.dlg.rotateEdit.setText(str(gc))
+	
+	self.gridConvergence = gc   #store grid convergence
 
 
 
@@ -698,4 +731,5 @@ def getGeoGraphicCoordinate(inProjectionString, inX, inY):
 	x2,y2 = transform(inProj,outProj,inX,inY)	
 	
 	return  QgsPoint(x2,y2)
+
 
