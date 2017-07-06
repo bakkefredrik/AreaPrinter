@@ -216,17 +216,24 @@ class AreaPrinter:
 
 
     def run(self):
-	self.setup()
-        """Run method that performs all the real wrk"""
-        # show the dialog
-        self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+
+	#check if projection is supported
+	CRS = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()  #the canvas' current CRS 
+	if getUtmZoneNumberFromProjection(CRS) == 0:	#did not get zone
+		self.userWarning("Projection is not supported. Please set the project CRS to WGS84 / UTM#.",'')
+		self.dlg.close()
+	else:
+		self.setup()
+        	"""Run method that performs all the real wrk"""
+        	# show the dialog
+        	self.dlg.show()
+        	# Run the dialog event loop
+        	result = self.dlg.exec_()
+        	# See if OK was pressed
+        	if result:
+        	    # Do something useful here - delete the line containing pass and
+        	    # substitute with your code.
+        	    pass
 
     def setup(self):
 	
@@ -253,20 +260,20 @@ class AreaPrinter:
 		self.createInitialPage()
 	
 		
-		if len(self.iface.activeComposers()) > 0:
-			self.userWarning("A composer already exist. please remove it before continuing",'Using this plugin can have unintended consequences for existing print composers, as it is not able to distinguish between them')
-	
+	if len(self.iface.activeComposers()) > 0:
+		self.userWarning("A composer already exist. please remove it before continuing",'Using this plugin can have unintended consequences for existing print composers, as it is not able to distinguish between them')
+
+
 	if self.dlg.rotCb.isChecked():
 		self.doRotate = 1
 	else:
 		self.doRotate = 0
-	
-	self.updateGridConvergence()
 		
+	self.updateGridConvergence()			
 	self.layer =  QgsVectorLayer('Polygon', 'AreaPrinter' , "memory")
 	self.pr = self.layer.dataProvider() 		
-		
-		
+			
+			
 	for ex in self.extents:
 		self.printExtents(ex)
 	
@@ -465,6 +472,9 @@ class AreaPrinter:
 				gc = 360+gc
 		
 		newMap.setMapRotation(gc)
+		newMap.setFrameEnabled(True)
+
+
 		self.createUtmGrid(newMap)
 		
 		comp.addComposerMap(newMap)
@@ -548,7 +558,7 @@ class AreaPrinter:
 	else:
 		upString = " "
 
-	infoLabelText = mapName + ". " + CRS + ". " + upString + "Grid Convergence="+str(self.gridConvergence)+". " + tmpString
+	infoLabelText = mapName + ". " + "UTM zone: "+ "%0.1f" % getUtmZoneNumberFromProjection(CRS) + ". " + upString + "Grid Convergence="+str(self.gridConvergence)+". " + tmpString
 	
 	comp = self.iface.activeComposers()[0].composition()
 	pages = len(comp.composerMapItems())
@@ -558,7 +568,9 @@ class AreaPrinter:
 		label.setText(infoLabelText)
 		label.adjustSizeToText()
 		comp.addComposerLabel(label)		
-		label.setItemPosition(sideMargin,0,0,i+1) #x,y,upperleft,page
+		label.setItemRotation(270)	#before positioning		
+		label.setItemPosition(0,A4PortraitHeight-bottomMargin,0,i+1) #x,y,upperleft,page
+		
 
 		#add page number
 		pageIndex = i+1
@@ -638,7 +650,8 @@ class AreaPrinter:
 	centerGeoGraphic = getGeoGraphicCoordinate(authId, canvasCenter.x(), canvasCenter.y())
 	gc = self.findGridConvergence(centerGeoGraphic.x(), centerGeoGraphic.y(), trueNorthMeridianLongitude)
 	
-	self.dlg.rotateEdit.setText(str(gc))
+	self.dlg.rotateEdit.setText("%0.1f" % gc)
+
 	
 	self.gridConvergence = gc   #store grid convergence
 
@@ -707,15 +720,17 @@ def rotateRectangleAroundCentre(rect, angle):
 
 
 
-	#returns or an utm zone number
+	#returns or an utm zone numberor 0
 def getUtmZoneNumberFromProjection(authId):
-	knownZones = [("EPSG:32632", 32), ("EPSG:32633", 33), ("EPSG:32634", 34), ("EPSG:32635", 35), ("EPSG:32636", 36), ("EPSG:32637", 37), ("EPSG:32638", 38)]
-	knownZones = dict(knownZones)
-	ret = knownZones[authId]
-	if ret < 0:
-		return 0
+	numberString = authId.split(':')[1]
+	num = int(numberString)
+	if(num >= 32601 and num <= 32660):
+		return num - 32600
+	elif(num >= 32701 and num <= 32760):
+		return num - 32700
 	else:
-		return ret 
+		return 0
+
 	
 def getTrueNorthMeridianLongitudeOfUtmZone(zone): 
 	if zone >= 31 and zone <= 60 :
@@ -731,5 +746,7 @@ def getGeoGraphicCoordinate(inProjectionString, inX, inY):
 	x2,y2 = transform(inProj,outProj,inX,inY)	
 	
 	return  QgsPoint(x2,y2)
+
+
 
 
