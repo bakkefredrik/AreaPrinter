@@ -313,6 +313,7 @@ class AreaPrinter:
 
     
     def moveNBtnClicked(self):
+	
 	if self.dlg.moveAllCb.isChecked():
 		self.moveMap("North", True)
 	else:
@@ -337,6 +338,7 @@ class AreaPrinter:
 		self.moveMap("West", False)
 
     def moveMap(self, direction, moveAll):
+	self.updateGridConvergence()	
 	self.emptyLayer()
 	offsetStep = 1000.0
 	offsetX =0.0;
@@ -453,7 +455,7 @@ class AreaPrinter:
 	composerViewIndex = len(self.iface.activeComposers()) -1
 	comp = self.iface.activeComposers()[0].composition()      # new compositions dont have consistent index
 	comp.setNumPages(len(self.extents))
-
+	
 	spaceBetweenPages = comp.spaceBetweenPages()
 	comp.setPaperSize(A4PortraitWidth,A4PortraitHeight) 
 	
@@ -646,11 +648,18 @@ class AreaPrinter:
 	authId = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
 	utmZone = getUtmZoneNumberFromProjection(authId)
 	trueNorthMeridianLongitude = getTrueNorthMeridianLongitudeOfUtmZone(utmZone)
-	canvasCenter = self.iface.mapCanvas().extent().center()
+
+
+	if len(self.extents) > 0:	
+		canvasCenter = self.extents[0].center() #first extent
+	else:
+		canvasCenter = self.iface.mapCanvas().extent().center() # or map canvas
+
+
 	centerGeoGraphic = getGeoGraphicCoordinate(authId, canvasCenter.x(), canvasCenter.y())
 	gc = self.findGridConvergence(centerGeoGraphic.x(), centerGeoGraphic.y(), trueNorthMeridianLongitude)
 	
-	self.dlg.rotateEdit.setText("%0.1f" % gc)
+	self.dlg.rotateEdit.setText("%0.2f" % gc)
 
 	
 	self.gridConvergence = gc   #store grid convergence
