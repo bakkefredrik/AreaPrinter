@@ -23,6 +23,8 @@
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt4.QtGui import QAction, QIcon, QMessageBox, QColor
 
+from pyproj import Proj, transform
+
 from qgis.core import *
 from qgis.gui import *
 import math
@@ -32,7 +34,7 @@ import resources
 from AreaPrinter_dialog import AreaPrinterDialog
 from AreaPrinter_toolDialog import AreaPrinterToolDialog
 import os.path
-
+gridConvergence = 0.0
 scale = 0.0
 A4PortraitHeight = 0.0
 A4PortraitWidth = 0.0
@@ -48,9 +50,10 @@ class AreaPrinter:
     """QGIS Plugin Implementation."""
     initialized = 0
     initializedTools = 0
-    	
+    doRotate = 0 #rotate to true north	
     extents = list()
-    overlap = 0.1 #value*100 = %overlap
+    overlapHorizontal = 0.1 #value*100 = %overlap
+    overlapVertical = 0.06  #value*100 = %overlap
     layer = QgsVectorLayer
     pr = QgsVectorDataProvider
     def __init__(self, iface):
@@ -214,17 +217,24 @@ class AreaPrinter:
 
 
     def run(self):
-	self.setup()
-        """Run method that performs all the real wrk"""
-        # show the dialog
-        self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+
+	#check if projection is supported
+	CRS = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()  #the canvas' current CRS 
+	if getUtmZoneNumberFromProjection(CRS) == 0:	#did not get zone
+		self.userWarning("Projection is not supported. Please set the project CRS to WGS84 / UTM#.",'')
+		self.dlg.close()
+	else:
+		self.setup()
+        	"""Run method that performs all the real wrk"""
+        	# show the dialog
+        	self.dlg.show()
+        	# Run the dialog event loop
+        	result = self.dlg.exec_()
+        	# See if OK was pressed
+        	if result:
+        	    # Do something useful here - delete the line containing pass and
+        	    # substitute with your code.
+        	    pass
 
     def setup(self):
 	
@@ -251,16 +261,20 @@ class AreaPrinter:
 		self.createInitialPage()
 	
 		
-		if len(self.iface.activeComposers()) > 0:
-			self.userWarning("A composer already exist. please remove it before continuing",'Using this plugin can have unintended consequences for existing print composers, as it is not able to distinguish between them')
+	if len(self.iface.activeComposers()) > 0:
+		self.userWarning("A composer already exist. please remove it before continuing",'Using this plugin can have unintended consequences for existing print composers, as it is not able to distinguish between them')
+
+
+	if self.dlg.rotCb.isChecked():
+		self.doRotate = 1
+	else:
+		self.doRotate = 0
 		
-
-	
-
+	self.updateGridConvergence()			
 	self.layer =  QgsVectorLayer('Polygon', 'AreaPrinter' , "memory")
 	self.pr = self.layer.dataProvider() 		
-		
-		
+			
+			
 	for ex in self.extents:
 		self.printExtents(ex)
 	
@@ -275,8 +289,23 @@ class AreaPrinter:
 	
 
     def printExtents(self, rect):
+	
+	
+	centre = rect.center()
+	
+	rotation = 0	
+	if self.doRotate == 1:
+		rotation = -self.gridConvergence
+	
+	p1 = rotatePoint(centre, QgsPoint(rect.xMinimum(), rect.yMinimum()),rotation)
+	p2 = rotatePoint(centre, QgsPoint(rect.xMinimum(), rect.yMaximum()),rotation)
+	p3 = rotatePoint(centre, QgsPoint(rect.xMaximum(), rect.yMinimum()),rotation)
+	p4 = rotatePoint(centre, QgsPoint(rect.xMaximum(), rect.yMaximum()),rotation)
+
 	poly = QgsFeature()
-	points = [QgsPoint(rect.xMinimum(), rect.yMinimum()), QgsPoint(rect.xMinimum(), rect.yMaximum()), QgsPoint(rect.xMaximum(), rect.yMaximum()),QgsPoint(rect.xMaximum(), rect.yMinimum())]
+
+	points = [p1,p2,p4,p3]
+	#points = [QgsPoint(rotatedRect.xMinimum(), rotatedRect.yMinimum()), QgsPoint(rotatedRect.xMinimum(), rotatedRect.yMaximum()), QgsPoint(rotatedRect.xMaximum(), rotatedRect.yMaximum()),QgsPoint(rotatedRect.xMaximum(), rotatedRect.yMinimum())]
 	poly.setGeometry(QgsGeometry.fromPolygon([points]))
 	self.pr.addFeatures([poly])
 	self.layer.updateExtents()
@@ -285,6 +314,7 @@ class AreaPrinter:
 
     
     def moveNBtnClicked(self):
+	
 	if self.dlg.moveAllCb.isChecked():
 		self.moveMap("North", True)
 	else:
@@ -309,8 +339,12 @@ class AreaPrinter:
 		self.moveMap("West", False)
 
     def moveMap(self, direction, moveAll):
+	self.updateGridConvergence()	
 	self.emptyLayer()
-	offsetStep = 1000.0
+	offsetStep = scale / 25.0	#step relative to scale
+
+
+	
 	offsetX =0.0;
 	offsetY =0.0;
 	if direction == "North":
@@ -353,8 +387,8 @@ class AreaPrinter:
 	self.emptyLayer()
 	lastExtent = self.extents[len(self.extents)-1] #dont use on empty list
 
-	offsetX = lastExtent.width() * (1.0-self.overlap);	
-	offsetY = lastExtent.height() * (1.0-self.overlap);
+	offsetX = lastExtent.width() * (1.0-self.overlapHorizontal);	
+	offsetY = lastExtent.height() * (1.0-self.overlapVertical);
 
 	doOffsetX = 0.0
 	doOffsetY = 0.0
@@ -368,13 +402,29 @@ class AreaPrinter:
 		doOffsetX = 0.0-offsetX
 
 	newExtent = QgsRectangle(lastExtent)	
+
+
 	newExtent.setXMaximum(lastExtent.xMaximum() + doOffsetX)	
 	newExtent.setXMinimum(lastExtent.xMinimum() + doOffsetX)
 	newExtent.setYMaximum(lastExtent.yMaximum() + doOffsetY)	
 	newExtent.setYMinimum(lastExtent.yMinimum() + doOffsetY)
 	
+	#now move extent in accordance with angle
+	tmpCenter = newExtent.center()
+	origin = lastExtent.center()
 	
-	self.extents.append(newExtent)
+	rotation = 0	
+	if self.doRotate == 1:
+		rotation = -self.gridConvergence
+	centreInRotatedSpace = rotatePoint(origin, tmpCenter, rotation)
+	
+	extentInRotatedSpace = QgsRectangle(newExtent)
+	extentInRotatedSpace.setXMinimum(centreInRotatedSpace.x() - newExtent.width() / 2.0)	
+	extentInRotatedSpace.setXMaximum(centreInRotatedSpace.x() + newExtent.width() / 2.0)
+	extentInRotatedSpace.setYMinimum(centreInRotatedSpace.y() - newExtent.height() / 2.0)	
+	extentInRotatedSpace.setYMaximum(centreInRotatedSpace.y() + newExtent.height() / 2.0)
+	
+	self.extents.append(extentInRotatedSpace)
 	for ex in self.extents:
 		self.printExtents(ex)
 	
@@ -382,7 +432,7 @@ class AreaPrinter:
     def exitBtnClicked(self):
 	#first remove layer
 	QgsMapLayerRegistry.instance().removeMapLayer(self.layer.id())
-
+	
 	self.dlg.close()
 
 
@@ -409,7 +459,7 @@ class AreaPrinter:
 	composerViewIndex = len(self.iface.activeComposers()) -1
 	comp = self.iface.activeComposers()[0].composition()      # new compositions dont have consistent index
 	comp.setNumPages(len(self.extents))
-
+	
 	spaceBetweenPages = comp.spaceBetweenPages()
 	comp.setPaperSize(A4PortraitWidth,A4PortraitHeight) 
 	
@@ -420,12 +470,25 @@ class AreaPrinter:
 		newMap = QgsComposerMap(comp, sideMargin, i* (A4PortraitHeight + spaceBetweenPages) + topMargin, A4PortraitWidth- 2*sideMargin, A4PortraitHeight - topMargin - bottomMargin )
     		
 		newMap.setNewExtent(self.extents[i])
+		
+		gc = 0
+		if self.doRotate == 1:
+			gc = self.gridConvergence
+			if gc < 0:	#composer dont handle negative
+				gc = 360+gc
+		
+		newMap.setMapRotation(gc)
+		newMap.setFrameEnabled(True)
+
+
 		self.createUtmGrid(newMap)
 		
 		comp.addComposerMap(newMap)
 	self.createScaleBars()	
 	self.createScales()		
 	self.createInfoLabels(CRS, mapName)
+
+	self.dlg.close()
 	
     def userWarning(self, text, details):
 	msg = QMessageBox()
@@ -494,7 +557,16 @@ class AreaPrinter:
 
     def createInfoLabels(self,CRS,mapName):
 	tmpString="QGIS/AreaPrinter"	
-	infoLabelText = mapName + ". " + CRS + ". " + tmpString
+	
+
+	if self.doRotate == 1:
+		upString = "Up=True North. "
+	elif self.doRotate == 0:
+		upString = "UP=Grid North. "
+	else:
+		upString = " "
+
+	infoLabelText = mapName + ". " + "UTM zone: "+ "%0.1f" % getUtmZoneNumberFromProjection(CRS) + ". " + upString + "Grid Convergence="+"%0.1f" % self.gridConvergence+". " + tmpString
 	
 	comp = self.iface.activeComposers()[0].composition()
 	pages = len(comp.composerMapItems())
@@ -504,7 +576,9 @@ class AreaPrinter:
 		label.setText(infoLabelText)
 		label.adjustSizeToText()
 		comp.addComposerLabel(label)		
-		label.setItemPosition(sideMargin,0,0,i+1) #x,y,upperleft,page
+		label.setItemRotation(270)	#before positioning		
+		label.setItemPosition(0,A4PortraitHeight-bottomMargin,0,i+1) #x,y,upperleft,page
+		
 
 		#add page number
 		pageIndex = i+1
@@ -517,17 +591,24 @@ class AreaPrinter:
 
     def reset(self):
 	del self.extents[:] #delete extents
-	self.emptyLayer()
+	
+	if self.dlg.rotCb.isChecked():
+		self.doRotate = 1
+	else:
+		self.doRotate = 0
+	self.emptyLayer()	
 	self.calculateValues()
+	self.updateGridConvergence()
 	self.createInitialPage()
 	self.printExtents(self.extents[0])
+	
 
     def createInitialPage(self):
 	extent_1 = QgsRectangle(self.iface.mapCanvas().extent())
 	# "center" the first page in canvas	
-	xMin = extent_1.xMinimum() + (extent_1.xMaximum() - extent_1.xMinimum()) /2.0
+	xMin = extent_1.center().x() - extentWidth / 2.0
 	xMax = xMin + extentWidth
-	yMin = extent_1.yMinimum() + (extent_1.yMaximum() - extent_1.yMinimum()) /2.0
+	yMin = extent_1.center().y() - extentHeight / 2.0
 	yMax = yMin + extentHeight
 	extent_1.setXMinimum(xMin)
 	extent_1.setYMinimum(yMin)
@@ -569,6 +650,25 @@ class AreaPrinter:
 	extentHeight = scale * (A4PortraitHeight - topMargin - bottomMargin) / 1000.0 #mm to m
 	extentWidth = scale * (A4PortraitWidth - 2.0*sideMargin)  / 1000.0 #mm to m
 
+    def updateGridConvergence(self):
+	authId = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
+	utmZone = getUtmZoneNumberFromProjection(authId)
+	trueNorthMeridianLongitude = getTrueNorthMeridianLongitudeOfUtmZone(utmZone)
+
+
+	if len(self.extents) > 0:	
+		canvasCenter = getCenterOfMultipleRectangles(self.extents)
+	else:
+		canvasCenter = self.iface.mapCanvas().extent().center() # or map canvas
+
+
+	centerGeoGraphic = getGeoGraphicCoordinate(authId, canvasCenter.x(), canvasCenter.y())
+	gc = self.findGridConvergence(centerGeoGraphic.x(), centerGeoGraphic.y(), trueNorthMeridianLongitude)
+	
+	self.dlg.rotateEdit.setText("%0.2f" % gc)
+
+	
+	self.gridConvergence = gc   #store grid convergence
 
 
 
@@ -607,8 +707,77 @@ class AreaPrinter:
 
 
 
+def rotatePoint(origin, point, angle):
+    #rotate point clockwise around origin, angle in degrees
+    
+    cosAngle = math.cos(math.radians(-angle))
+    sinAngle = math.sin(math.radians(-angle))
+
+    returnX = origin.x() + cosAngle * (point.x() - origin.x()) - sinAngle * (point.y() - origin.y())
+    returnY = origin.y() + sinAngle * (point.x() - origin.x()) + cosAngle * (point.y() - origin.y())
+    return QgsPoint(returnX,returnY)
+
+
+def rotateRectangleAroundCentre(rect, angle):
+    #rotate rectangle angle degrees clockwise
+    ret = QgsRectangle(0,0,0,0)
+    centre = rect.center()
+
+    xMin = rect.xMinimum()
+    xMax = rect.xMaximum()
+    yMin = rect.yMinimum()
+    yMax = rect.yMaximum()
+
+    p1 = rotatePoint(centre, QgsPoint(xMin,yMin),angle)
+    p2 = rotatePoint(centre, QgsPoint(xMax,yMax),angle)
+
+    return QgsRectangle(p1,p2)
 
 
 
+	#returns or an utm zone numberor 0
+def getUtmZoneNumberFromProjection(authId):
+	numberString = authId.split(':')[1]
+	num = int(numberString)
+	if(num >= 32601 and num <= 32660):
+		return num - 32600
+	elif(num >= 32701 and num <= 32760):
+		return num - 32700
+	else:
+		return 0
+
+	
+def getTrueNorthMeridianLongitudeOfUtmZone(zone): 
+	if zone >= 31 and zone <= 60 :
+		return (zone -31 ) * 6.0 + 3.0
+	elif zone > 0 and zone <= 30 :
+		return -((30 - zone) * 6.0 + 3.0)	#west is negative
 
 
+def getGeoGraphicCoordinate(inProjectionString, inX, inY):
+
+	inProj = Proj(init=inProjectionString)
+	outProj = Proj(init='EPSG:4326')	
+	x2,y2 = transform(inProj,outProj,inX,inY)	
+	
+	return  QgsPoint(x2,y2)
+
+def getCenterOfMultipleRectangles(rectangles):
+	if len(rectangles) < 1:
+		return None	
+	xmin = rectangles[0].xMinimum()
+	ymin = rectangles[0].yMinimum()
+	xmax = 0
+	ymax = 0
+
+	for ex in rectangles:
+		if ex.xMinimum() < xmin:
+			xmin = ex.xMinimum()
+		if ex.yMinimum() < ymin:
+			ymin = ex.yMinimum()
+		if ex.xMaximum() > xmax:
+			xmax = ex.xMaximum()
+		if ex.yMaximum() > ymax:
+			ymax = ex.yMaximum()
+	totalRect =  QgsRectangle(xmin, ymin, xmax, ymax)
+	return totalRect.center()
