@@ -52,7 +52,8 @@ class AreaPrinter:
     initializedTools = 0
     doRotate = 0 #rotate to true north	
     extents = list()
-    overlap = 0.1 #value*100 = %overlap
+    overlapHorizontal = 0.1 #value*100 = %overlap
+    overlapVertical = 0.06  #value*100 = %overlap
     layer = QgsVectorLayer
     pr = QgsVectorDataProvider
     def __init__(self, iface):
@@ -340,7 +341,10 @@ class AreaPrinter:
     def moveMap(self, direction, moveAll):
 	self.updateGridConvergence()	
 	self.emptyLayer()
-	offsetStep = 1000.0
+	offsetStep = scale / 25.0	#step relative to scale
+
+
+	
 	offsetX =0.0;
 	offsetY =0.0;
 	if direction == "North":
@@ -383,8 +387,8 @@ class AreaPrinter:
 	self.emptyLayer()
 	lastExtent = self.extents[len(self.extents)-1] #dont use on empty list
 
-	offsetX = lastExtent.width() * (1.0-self.overlap);	
-	offsetY = lastExtent.height() * (1.0-self.overlap);
+	offsetX = lastExtent.width() * (1.0-self.overlapHorizontal);	
+	offsetY = lastExtent.height() * (1.0-self.overlapVertical);
 
 	doOffsetX = 0.0
 	doOffsetY = 0.0
@@ -428,7 +432,7 @@ class AreaPrinter:
     def exitBtnClicked(self):
 	#first remove layer
 	QgsMapLayerRegistry.instance().removeMapLayer(self.layer.id())
-
+	
 	self.dlg.close()
 
 
@@ -483,6 +487,8 @@ class AreaPrinter:
 	self.createScaleBars()	
 	self.createScales()		
 	self.createInfoLabels(CRS, mapName)
+
+	self.dlg.close()
 	
     def userWarning(self, text, details):
 	msg = QMessageBox()
@@ -560,7 +566,7 @@ class AreaPrinter:
 	else:
 		upString = " "
 
-	infoLabelText = mapName + ". " + "UTM zone: "+ "%0.1f" % getUtmZoneNumberFromProjection(CRS) + ". " + upString + "Grid Convergence="+str(self.gridConvergence)+". " + tmpString
+	infoLabelText = mapName + ". " + "UTM zone: "+ "%0.1f" % getUtmZoneNumberFromProjection(CRS) + ". " + upString + "Grid Convergence="+"%0.1f" % self.gridConvergence+". " + tmpString
 	
 	comp = self.iface.activeComposers()[0].composition()
 	pages = len(comp.composerMapItems())
@@ -600,9 +606,9 @@ class AreaPrinter:
     def createInitialPage(self):
 	extent_1 = QgsRectangle(self.iface.mapCanvas().extent())
 	# "center" the first page in canvas	
-	xMin = extent_1.xMinimum() + (extent_1.xMaximum() - extent_1.xMinimum()) /2.0
+	xMin = extent_1.center().x() - extentWidth / 2.0
 	xMax = xMin + extentWidth
-	yMin = extent_1.yMinimum() + (extent_1.yMaximum() - extent_1.yMinimum()) /2.0
+	yMin = extent_1.center().y() - extentHeight / 2.0
 	yMax = yMin + extentHeight
 	extent_1.setXMinimum(xMin)
 	extent_1.setYMinimum(yMin)
@@ -651,7 +657,7 @@ class AreaPrinter:
 
 
 	if len(self.extents) > 0:	
-		canvasCenter = self.extents[0].center() #first extent
+		canvasCenter = getCenterOfMultipleRectangles(self.extents)
 	else:
 		canvasCenter = self.iface.mapCanvas().extent().center() # or map canvas
 
@@ -756,6 +762,22 @@ def getGeoGraphicCoordinate(inProjectionString, inX, inY):
 	
 	return  QgsPoint(x2,y2)
 
+def getCenterOfMultipleRectangles(rectangles):
+	if len(rectangles) < 1:
+		return None	
+	xmin = rectangles[0].xMinimum()
+	ymin = rectangles[0].yMinimum()
+	xmax = 0
+	ymax = 0
 
-
-
+	for ex in rectangles:
+		if ex.xMinimum() < xmin:
+			xmin = ex.xMinimum()
+		if ex.yMinimum() < ymin:
+			ymin = ex.yMinimum()
+		if ex.xMaximum() > xmax:
+			xmax = ex.xMaximum()
+		if ex.yMaximum() > ymax:
+			ymax = ex.yMaximum()
+	totalRect =  QgsRectangle(xmin, ymin, xmax, ymax)
+	return totalRect.center()
