@@ -524,6 +524,7 @@ class AreaPrinter:
 	
     def createScaleBars(self): #mapnumber from zero
 	comp = self.iface.activeComposers()[0].composition()
+	moveCloserToMap = -5.0
 	for i in range(0, len(comp.composerMapItems())):
 
 
@@ -531,9 +532,12 @@ class AreaPrinter:
 		scaleBar.setComposerMap(comp.composerMapItems()[i])			
 			
 		scaleBar.setNumMapUnitsPerScaleBarUnit(1000.0)				
-#		scaleBar.setUnits(2) #km
+
 		scaleBar.setUnitLabeling("km")
 		scaleBar.setNumSegmentsLeft(0)
+
+		scaleBar.setFontColor(QColor(0, 0, 0, 0))  #hide labels
+
 		
 		if scale == 50000:		# special case, scalebar cannot fit four labels
 			scaleBar.setNumSegments(2)
@@ -543,17 +547,43 @@ class AreaPrinter:
 			scaleBar.setNumUnitsPerSegment(250.0)
 
 		comp.addComposerScaleBar(scaleBar)		
-		scaleBar.setItemPosition(sideMargin,A4PortraitHeight,6,i+1)  #x,y,lowerleft,page
+		
+		scaleBar.setItemPosition(sideMargin,A4PortraitHeight+moveCloserToMap,6,i+1)  #x,y,lowerleft,page
+
+
+		if scale == 50000:
+			offset = 21.0
+		elif scale == 25000:
+			offset = 43.0
+		elif scale == 10000:
+			offset = 104.0
+		else:
+			offset = 0.0
+		labelMargin = -4.5
+
+		#scalebar label
+		label = QgsComposerLabel(comp)
+		label.setText("1Km")
+		label.adjustSizeToText()
+		comp.addComposerLabel(label)			
+		label.setItemPosition(sideMargin+offset,A4PortraitHeight+labelMargin,6,i+1) #x,y,upperleft,page
+
+
+
 					
     def createScales(self): #mapnumber from zero
 	comp = self.iface.activeComposers()[0].composition()
+	mapMargin = 1.0
+	
 	for i in range(0, len(comp.composerMapItems())):
 		scale = QgsComposerScaleBar(comp)
 		scale.setComposerMap(comp.composerMapItems()[i])			
 			
 		scale.setStyle("Numeric")
 		comp.addComposerScaleBar(scale)		
-		scale.setItemPosition(160,A4PortraitHeight,6,i+1)  #x,y,lowerleft,page
+		scale.setItemPosition(160,A4PortraitHeight+mapMargin,6,i+1)  #x,y,lowerleft,page
+
+
 
     def createInfoLabels(self,CRS,mapName):
 	tmpString="QGIS/AreaPrinter"	
@@ -566,7 +596,7 @@ class AreaPrinter:
 	else:
 		upString = " "
 
-	infoLabelText = mapName + ". " + "UTM zone: "+ "%0.1f" % getUtmZoneNumberFromProjection(CRS) + ". " + upString + "Grid Convergence="+"%0.1f" % self.gridConvergence+". " + tmpString
+	infoLabelText = mapName + ". " + "UTM zone: "+ str(getUtmZoneNumberFromProjection(CRS)) + ". " + upString + "Grid Convergence="+"%0.1f" % self.gridConvergence+". " + tmpString
 	
 	comp = self.iface.activeComposers()[0].composition()
 	pages = len(comp.composerMapItems())
@@ -577,7 +607,7 @@ class AreaPrinter:
 		label.adjustSizeToText()
 		comp.addComposerLabel(label)		
 		label.setItemRotation(270)	#before positioning		
-		label.setItemPosition(0,A4PortraitHeight-bottomMargin,0,i+1) #x,y,upperleft,page
+		label.setItemPosition(5,A4PortraitHeight-bottomMargin,0,i+1) #x,y,upperleft,page
 		
 
 		#add page number
@@ -585,8 +615,9 @@ class AreaPrinter:
 		pageLabel = QgsComposerLabel(comp)
 		pageLabel.setText("Page " + str(pageIndex) + "/" + str(pages) )
 		pageLabel.adjustSizeToText()
-		comp.addComposerLabel(pageLabel)		
-		pageLabel.setItemPosition(A4PortraitWidth - sideMargin,0,2,i+1) #x,y,upperright,page
+		comp.addComposerLabel(pageLabel)	
+		pageLabel.setItemRotation(270)	#before positioning	
+		pageLabel.setItemPosition(5,30,0,i+1) #x,y,upperright,page
 
 
     def reset(self):
