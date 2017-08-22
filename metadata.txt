@@ -8,13 +8,13 @@
 
 [general]
 name=AreaPrinter
-qgisMinimumVersion=2.0
+qgisMinimumVersion=2.18
 description=AreaPrinter
-version=0.4
+version=0.5
 author=Fredrik Bakke
 email=bakkefredrik@gmail.com
 
-about=AreaPrinter simplifies the process of creating print composers for navigation-quality hiking maps. It produces a print composer with km grid, scale and ruler for an area that may span several pages. Currently A4 paper, 1:10k,1:25k or 1:50k scales, and WGS 84 / UTM projection is supported. Warning: Verify the correctness of map before using it, author takes no responsibility.
+about=AreaPrinter simplifies the process of creating print composers for navigation-quality hiking maps. It produces a print composer with km grid, scale and ruler for an area that may span several pages. Currently A4 paper, 1:10k,1:25k or 1:50k scales, and WGS 84 / UTM projections are supported. Warning: Verify the correctness of map before using it, author takes no responsibility. Using the geomag library for WMM2010 magnetic declination model.
 
 tracker=https://github.com/bakkefredrik/AreaPrinter
 repository=https://github.com/bakkefredrik/AreaPrinter
@@ -23,7 +23,7 @@ repository=https://github.com/bakkefredrik/AreaPrinter
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-# changelog=Added CRS,Map name, page numbers. removes layer before printing composer.
+# changelog=Magnetic delination, bugfixes, UI improvements.
 
 
 # Tags are comma separated with spaces allowed

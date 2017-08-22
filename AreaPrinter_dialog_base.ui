@@ -315,7 +315,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>0</string>
+    <string>-1</string>
    </property>
   </widget>
   <widget class="QCheckBox" name="rotCb">
@@ -345,6 +345,19 @@
    </property>
    <property name="orientation">
     <enum>Qt::Horizontal</enum>
+   </property>
+  </widget>
+  <widget class="QLabel" name="mDecLabel">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>439</y>
+     <width>111</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>M.Dec: -1</string>
    </property>
   </widget>
  </widget>

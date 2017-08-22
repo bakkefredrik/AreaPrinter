@@ -24,17 +24,20 @@ from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt4.QtGui import QAction, QIcon, QMessageBox, QColor
 
 from pyproj import Proj, transform
-
 from qgis.core import *
 from qgis.gui import *
 import math
+import datetime	#magnetic declination label
+
 # Initialize Qt resources from file resources.py
 import resources
 # Import the code for the dialog
 from AreaPrinter_dialog import AreaPrinterDialog
 from AreaPrinter_toolDialog import AreaPrinterToolDialog
 import os.path
+import geomag
 gridConvergence = 0.0
+magneticDeclination = 0.0
 scale = 0.0
 A4PortraitHeight = 0.0
 A4PortraitWidth = 0.0
@@ -56,6 +59,7 @@ class AreaPrinter:
     overlapVertical = 0.06  #value*100 = %overlap
     layer = QgsVectorLayer
     pr = QgsVectorDataProvider
+
     def __init__(self, iface):
         """Constructor.
 
@@ -270,7 +274,8 @@ class AreaPrinter:
 	else:
 		self.doRotate = 0
 		
-	self.updateGridConvergence()			
+	self.updateGridConvergence()	
+	self.updateMagneticDeclination()		
 	self.layer =  QgsVectorLayer('Polygon', 'AreaPrinter' , "memory")
 	self.pr = self.layer.dataProvider() 		
 			
@@ -340,6 +345,7 @@ class AreaPrinter:
 
     def moveMap(self, direction, moveAll):
 	self.updateGridConvergence()	
+	self.updateMagneticDeclination()
 	self.emptyLayer()
 	offsetStep = scale / 25.0	#step relative to scale
 
@@ -413,6 +419,9 @@ class AreaPrinter:
 	tmpCenter = newExtent.center()
 	origin = lastExtent.center()
 	
+	self.updateGridConvergence()	
+	self.updateMagneticDeclination()
+
 	rotation = 0	
 	if self.doRotate == 1:
 		rotation = -self.gridConvergence
@@ -452,17 +461,21 @@ class AreaPrinter:
 
     def generateComposer(self):
 
+	self.updateGridConvergence()	
+	self.updateMagneticDeclination()
 	#first remove layer
 	QgsMapLayerRegistry.instance().removeMapLayer(self.layer.id())
 	#then create and set up composer
-	self.iface.createNewComposer("AreaPrinter")
+	self.iface.createNewComposer("AreaPrinterComposer")
 	composerViewIndex = len(self.iface.activeComposers()) -1
 	comp = self.iface.activeComposers()[0].composition()      # new compositions dont have consistent index
 	comp.setNumPages(len(self.extents))
 	
+	
 	spaceBetweenPages = comp.spaceBetweenPages()
 	comp.setPaperSize(A4PortraitWidth,A4PortraitHeight) 
-	
+	#comp.setPrintResolution(127*3) #use multiple of 127 for best rasterization result. avoid stretching and grainy output.
+
 	CRS = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()  #the canvas' current CRS 
 	mapName = self.dlg.mapNameEdit.text()
 	
@@ -596,7 +609,9 @@ class AreaPrinter:
 	else:
 		upString = " "
 
-	infoLabelText = mapName + ". " + "UTM zone: "+ str(getUtmZoneNumberFromProjection(CRS)) + ". " + upString + "Grid Convergence="+"%0.1f" % self.gridConvergence+". " + tmpString
+	now = datetime.datetime.now()
+	yearString = "%0.0f" % now.year
+	infoLabelText = mapName + ". " + "UTM zone: "+ str(getUtmZoneNumberFromProjection(CRS)) + ". " + upString + "Grid Convergence="+"%0.1f" % self.gridConvergence+". " + tmpString +" M.Dec " + yearString + ": " + "%0.1f" % self.magneticDeclination + "."
 	
 	comp = self.iface.activeComposers()[0].composition()
 	pages = len(comp.composerMapItems())
@@ -630,6 +645,7 @@ class AreaPrinter:
 	self.emptyLayer()	
 	self.calculateValues()
 	self.updateGridConvergence()
+	self.updateMagneticDeclination()
 	self.createInitialPage()
 	self.printExtents(self.extents[0])
 	
@@ -733,10 +749,26 @@ class AreaPrinter:
 	C = A * B
 	D = math.degrees(math.atan(C))
 	return D
+    def findMagneticDeclination(self, long, lat):
+	return geomag.declination(long,lat)
+
+    def updateMagneticDeclination(self):
+	authId = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
+	utmZone = getUtmZoneNumberFromProjection(authId)
+	trueNorthMeridianLongitude = getTrueNorthMeridianLongitudeOfUtmZone(utmZone)
+
+	if len(self.extents) > 0:	
+		canvasCenter = getCenterOfMultipleRectangles(self.extents)
+	else:
+		canvasCenter = self.iface.mapCanvas().extent().center() # or map canvas
 
 
-
-
+	centerGeoGraphic = getGeoGraphicCoordinate(authId, canvasCenter.x(), canvasCenter.y())
+	
+	dec = self.findMagneticDeclination(centerGeoGraphic.y(),centerGeoGraphic.x())
+	self.dlg.mDecLabel.setText("M.Dec: " + "%0.2f" % dec)
+	self.magneticDeclination = dec
+	
 
 def rotatePoint(origin, point, angle):
     #rotate point clockwise around origin, angle in degrees
@@ -812,3 +844,6 @@ def getCenterOfMultipleRectangles(rectangles):
 			ymax = ex.yMaximum()
 	totalRect =  QgsRectangle(xmin, ymin, xmax, ymax)
 	return totalRect.center()
+
+
+  
